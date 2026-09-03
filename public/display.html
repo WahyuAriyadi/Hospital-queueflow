@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QueueFlow — Papan Panggil</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: '#0b1220', panel: '#121a2b', raised: '#182238', line: '#223049',
+            ink: '#e8ecf3', muted: '#7c8aa5', teal: '#2dd4bf', amber: '#f5a623',
+          },
+          fontFamily: {
+            sans: ['IBM Plex Sans', 'sans-serif'],
+            mono: ['IBM Plex Mono', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body class="bg-bg text-ink font-sans">
+  <div class="scanline"></div>
+  <div id="app" class="min-h-screen flex flex-col" v-cloak>
+
+    <header class="border-b border-line px-8 py-5 flex items-baseline justify-between">
+      <h1 class="font-mono text-xl tracking-tight">QueueFlow<span class="text-teal">_</span> <span class="text-muted text-base">papan panggil</span></h1>
+      <p class="font-mono text-muted text-sm">{{ jamSekarang }}</p>
+    </header>
+
+    <main class="flex-1 p-8 grid gap-6" :class="gridCols">
+      <div v-for="d in queues" :key="d.code" class="ticket flex flex-col">
+        <div class="px-6 pt-5 flex items-center justify-between">
+          <p class="text-muted text-sm uppercase tracking-wide">{{ d.name }}</p>
+          <span v-if="d.priorityWaiting > 0" class="badge badge--priority">{{ d.priorityWaiting }} darurat</span>
+        </div>
+
+        <div class="flex-1 flex items-center justify-center py-6">
+          <p v-if="d.nowServing" class="font-mono font-bold text-teal leading-none"
+             :class="d.nowServing.status === 'called' ? 'text-6xl animate-pulse' : 'text-6xl'">
+            {{ d.nowServing.number }}
+          </p>
+          <p v-else class="font-mono text-3xl text-muted">—</p>
+        </div>
+
+        <div class="perforation perforation--panel"></div>
+        <div class="px-6 py-3 flex justify-between text-muted text-sm font-mono">
+          <span>{{ d.waiting + d.priorityWaiting }} menunggu</span>
+          <span v-if="d.nowServing?.counter">loket {{ d.nowServing.counter }}</span>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/vue@3.4.31/dist/vue.global.prod.js"></script>
+  <script src="/js/display.js"></script>
+</body>
+</html>

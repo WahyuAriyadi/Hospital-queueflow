@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QueueFlow — Ambil Nomor Antrian</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: '#0b1220', panel: '#121a2b', raised: '#182238', line: '#223049',
+            ink: '#e8ecf3', muted: '#7c8aa5', teal: '#2dd4bf', amber: '#f5a623',
+          },
+          fontFamily: {
+            sans: ['IBM Plex Sans', 'sans-serif'],
+            mono: ['IBM Plex Mono', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body class="bg-bg text-ink font-sans">
+  <div class="scanline"></div>
+  <div id="app" class="min-h-screen flex flex-col">
+
+    <header class="border-b border-line px-6 py-4 flex items-baseline justify-between">
+      <div>
+        <h1 class="font-mono text-lg tracking-tight">QueueFlow<span class="text-teal">_</span></h1>
+        <p class="text-muted text-sm">Loket Ambil Nomor Antrian</p>
+      </div>
+      <a href="/display.html" class="text-muted text-sm hover:text-teal font-mono">papan panggil →</a>
+    </header>
+
+    <main class="flex-1 px-6 py-10 max-w-2xl mx-auto w-full" v-cloak>
+
+      <!-- Step 1: pilih poli -->
+      <section v-if="!ticket">
+        <h2 class="text-xl font-medium mb-1">Pilih poli tujuan</h2>
+        <p class="text-muted text-sm mb-6">Nomor antrian akan dicetak setelah Anda memilih.</p>
+
+        <div v-if="loading" class="text-muted font-mono text-sm">Memuat daftar poli…</div>
+        <div v-else class="grid gap-3 sm:grid-cols-2">
+          <button
+            v-for="d in departments" :key="d.code"
+            class="btn flex flex-col gap-1"
+            @click="ambilTiket(d.code)"
+            :disabled="submitting"
+          >
+            <span class="flex items-center justify-between">
+              <span class="font-medium">{{ d.name }}</span>
+              <span v-if="d.priority" class="badge badge--priority">Prioritas</span>
+            </span>
+            <span class="text-muted text-sm font-mono">
+              {{ d.waiting + d.priorityWaiting }} orang menunggu
+            </span>
+          </button>
+        </div>
+
+        <p v-if="error" class="text-red-400 text-sm mt-4">{{ error }}</p>
+      </section>
+
+      <!-- Step 2: tiket terbit -->
+      <section v-else class="flex flex-col items-center text-center">
+        <p class="text-muted text-sm mb-4">Nomor antrian Anda</p>
+
+        <div class="ticket w-full max-w-xs">
+          <div class="ticket__notch ticket__notch--left"></div>
+          <div class="ticket__notch ticket__notch--right"></div>
+          <div class="px-6 py-8">
+            <p class="text-muted text-sm mb-1">{{ ticket.departmentName }}</p>
+            <p class="font-mono text-5xl font-semibold tracking-wide text-teal">{{ ticket.number }}</p>
+            <span class="badge mt-3" :class="ticket.priority ? 'badge--priority' : 'badge--normal'">
+              {{ ticket.priority ? 'Jalur Prioritas' : 'Jalur Reguler' }}
+            </span>
+          </div>
+          <div class="perforation perforation--panel"></div>
+          <div class="px-6 py-4 text-left">
+            <p class="text-muted text-xs font-mono">Diterbitkan {{ waktu(ticket.issuedAt) }}</p>
+            <p class="text-muted text-xs mt-2">Pantau giliran Anda di papan panggil, atau simpan tautan ini.</p>
+          </div>
+        </div>
+
+        <button class="btn mt-8" @click="reset">Ambil nomor lain</button>
+      </section>
+
+    </main>
+
+    <footer class="px-6 py-4 border-t border-line text-muted text-xs font-mono text-center">
+      QueueFlow — dibangun dengan Node.js serverless + Redis, gratis di Vercel
+    </footer>
+  </div>
+
+  <script src="https://unpkg.com/vue@3.4.31/dist/vue.global.prod.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

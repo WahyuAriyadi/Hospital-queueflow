@@ -1,0 +1,19 @@
+{
+  "name": "queueflow-hospital",
+  "version": "1.0.0",
+  "private": true,
+  "description": "QueueFlow — sistem antrian rumah sakit. Node.js serverless functions + Vue 3 (CDN), deploy gratis satu-repo di Vercel.",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.34.3"
+  },
+  "devDependencies": {
+    "vercel": "^37.0.0"
+  }
+}

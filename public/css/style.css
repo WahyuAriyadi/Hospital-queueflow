@@ -1,0 +1,160 @@
+:root {
+  --bg: #0b1220;
+  --panel: #121a2b;
+  --panel-raised: #182238;
+  --line: #223049;
+  --ink: #e8ecf3;
+  --muted: #7c8aa5;
+  --teal: #2dd4bf;
+  --teal-dim: #12332f;
+  --amber: #f5a623;
+  --amber-dim: #3a2a0d;
+  --danger: #ef4444;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+[v-cloak] {
+  display: none;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+body {
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  min-height: 100vh;
+}
+
+.mono {
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+}
+
+/* Perforated tear line — a row of faux punch-holes, the same motif the
+   original Vue ticket-stub component used, redrawn here in CSS instead of
+   an SVG asset so it stays a single dependency-free file. */
+.perforation {
+  height: 18px;
+  background: radial-gradient(circle at 9px 9px, var(--bg) 7px, transparent 7.5px) repeat-x;
+  background-size: 18px 18px;
+  background-position: -5px center;
+}
+
+.perforation--panel {
+  background-image: radial-gradient(circle at 9px 9px, var(--panel) 7px, transparent 7.5px);
+}
+
+.ticket {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.ticket__notch {
+  position: absolute;
+  top: calc(50% - 9px);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--bg);
+}
+
+.ticket__notch--left {
+  left: -9px;
+}
+
+.ticket__notch--right {
+  right: -9px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 2px;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+}
+
+.badge--priority {
+  background: var(--amber-dim);
+  color: var(--amber);
+  border: 1px solid var(--amber);
+}
+
+.badge--normal {
+  background: var(--teal-dim);
+  color: var(--teal);
+  border: 1px solid var(--teal);
+}
+
+.btn {
+  font-family: inherit;
+  font-size: 1rem;
+  border: 1px solid var(--line);
+  background: var(--panel-raised);
+  color: var(--ink);
+  border-radius: 2px;
+  padding: 0.75rem 1.25rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.05s ease;
+  text-align: left;
+}
+
+.btn:hover {
+  border-color: var(--teal);
+}
+
+.btn:active {
+  transform: scale(0.99);
+}
+
+.btn--primary {
+  background: var(--teal);
+  color: #06231f;
+  border-color: var(--teal);
+  font-weight: 600;
+  text-align: center;
+}
+
+.btn--primary:hover {
+  filter: brightness(1.08);
+}
+
+.btn--primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn--danger {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: transparent;
+}
+
+.scanline {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.012) 0px,
+    rgba(255, 255, 255, 0.012) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  z-index: 50;
+}
+
+::selection {
+  background: var(--teal);
+  color: #06231f;
+}
