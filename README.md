@@ -1,30 +1,33 @@
-# QueueFlow — Antrian Rumah Sakit
 
-Evolusi dari [QueueFlow](https://github.com) (dulu `antrian-app`), sistem antrian Go yang awalnya dibangun untuk belajar goroutine, channel, dan actor pattern. Versi ini menjaga ide intinya, tapi pindah backend ke Node.js/TypeScript agar bisa deploy gratis, satu repo, langsung di Vercel — tanpa server yang perlu dijaga hidup.
+# QueueFlow — Hospital Queue System 🎫
 
-Lima layar:
+A queue system for hospitals/clinics. Patients grab a number from a kiosk, staff call the next patient from a counter screen, and the result shows up on a display board for the waiting room. Full Node.js + Vue 3 (CDN, no build step), and it deploys for free straight to Vercel.
 
-- **`/` — Kiosk pasien**: isi nama/NIK opsional, pilih poli (poli yang tutup otomatis nonaktif), ambil nomor antrian bergaya tiket sobek dengan QR code.
-- **`/counter.html` — Loket petugas**: panggil pasien berikutnya, tandai selesai, lihat loket lain yang aktif di poli yang sama.
-- **`/display.html` — Papan panggil**: layar TV ruang tunggu, auto-refresh, mendukung beberapa loket sekaligus per poli, plus panggilan suara (opsional, perlu diaktifkan manual karena browser).
-- **`/status.html` — Status tiket pribadi**: dituju lewat scan QR di tiket, menampilkan posisi antrian & estimasi waktu tunggu tanpa perlu berdiri di depan papan panggil.
-- **`/admin.html` — Rekap harian**: dikunci PIN (`ADMIN_PIN`), menampilkan jumlah tiket terbit/selesai dan rata-rata waktu layanan per poli.
+This is actually a continuation of an older project of mine, [QueueFlow](https://github.com/) (formerly `antrian-app`) — a Go version I built to learn goroutines & channels. This version was rebuilt from scratch in Node.js so it could deploy free, single-repo, on Vercel — but the core ideas are still here, just wearing a different shape. More on that in the trade-offs section below.
 
-## Kenapa saya bangun ini
+Five screens:
 
-Versi Go aslinya mengajarkan saya actor pattern lewat goroutine dan channel — tiap loket adalah satu goroutine yang jadi satu-satunya pembaca dari channel-nya sendiri, jadi dua loket tidak akan pernah rebutan tiket yang sama. Itu jaminan yang elegan, tapi butuh proses yang hidup terus-menerus, dan Vercel (tempat saya ingin deploy gratis dan publik) menjalankan semuanya sebagai serverless function yang stateless — mati-hidup tiap request.
+* **`/`** — patient kiosk: enter name/NIK (optional), pick a department (closed ones are auto-disabled), grab a ticket-stub-styled queue number with a QR code on it.
+* **`/counter.html`** — staff counter screen: call next, mark done, see which other counters are currently active in the same department.
+* **`/display.html`** — waiting-room TV board: auto-refreshes, supports several counters per department at once, plus an optional voice announcement (has to be enabled manually because of browser autoplay rules).
+* **`/status.html`** — a patient's personal ticket status page, reached by scanning the QR code on their ticket — shows live position and wait estimate without needing to stand in front of the board.
+* **`/admin.html`** — PIN-locked (`ADMIN_PIN`) daily recap: tickets issued/completed and average service time per department.
 
-Jadi pertanyaannya bukan "Go atau Node", tapi: apakah *jaminan* dari actor pattern itu bisa dipertahankan tanpa prosesnya? Ternyata bisa — lihat bagian trade-off di bawah.
+## Why it's built this way
 
-## Arsitektur
+Back in the Go version, each counter was its own goroutine, and it was the only one reading from its own channel — so you were guaranteed no two counters would ever grab the same ticket. I really liked that guarantee, but it needs a process that stays alive continuously, and on Vercel everything runs as a serverless function that spins up and down per request.
+
+So the real question wasn't "move to Node or stay on Go" — it was: how do you keep the actor pattern's guarantee alive when the process itself doesn't stay alive? Turns out you still can, it just moves somewhere else — see below.
+
+## Architecture
 
 ```mermaid
 flowchart LR
-    subgraph Kiosk["Kiosk Pasien (/)"]
-        A[Pilih poli] --> B["POST /api/tickets"]
+    subgraph Kiosk["Patient Kiosk (/)"]
+        A[Pick department] --> B["POST /api/tickets"]
     end
 
-    subgraph Loket["Loket Petugas (/counter.html)"]
+    subgraph Counter["Staff Counter (/counter.html)"]
         C["POST /api/call-next"] --> D["POST /api/complete"]
     end
 
@@ -32,59 +35,59 @@ flowchart LR
     C --> R
     D --> R
     R --> E["GET /api/queue-status"]
-    E --> F["Papan Panggil (/display.html)"]
+    E --> F["Display Board (/display.html)"]
 ```
 
-Setiap poli punya dua antrian di Redis: `queue:{poli}:priority` dan `queue:{poli}:normal`. IGD selalu masuk jalur prioritas dan selalu dilayani lebih dulu — sesuai praktik triase nyata, bukan sekadar "adil" secara FIFO.
+Each department gets two queues in Redis: one for priority, one for regular. The ER (IGD) always lands in the priority lane and always gets called first — it's not a checkbox a patient could game, it's decided by the department's own config. That matches how real triage actually works, not just FIFO "fairness".
 
-## Trade-off yang saya buat dengan sadar
+## Trade-offs I made on purpose
 
-- **Goroutine/channel → Redis `EVAL` atomik.** Jaminan "hanya satu loket yang bisa mengambil tiket ini" dulu datang dari channel Go. Sekarang datang dari Lua script yang dieksekusi atomik (single-threaded) di sisi Redis — dua request `call-next` yang datang bersamaan tetap tidak akan pernah mengambil tiket yang sama. Lihat `api/_lib/actor.js`.
-- **Graceful shutdown → self-heal saat dibaca.** Dulu graceful shutdown menjamin tiket yang sedang diproses tidak hilang saat server dimatikan. Sekarang tidak ada server untuk dimatikan — risikonya berubah jadi "loket memanggil tiket lalu tab petugas ditutup sebelum menekan Selesai". Solusinya: tiket yang macet di status `called` lebih dari 5 menit otomatis dikembalikan ke depan antrian saat endpoint manapun berikutnya dipanggil. Tidak butuh cron, tidak butuh proses background.
-- **Custom JSON marshaling → satu fungsi `ticketToJSON`.** Prinsipnya sama: bentuk data di wire selalu eksplisit dan konsisten, tidak pernah hasil serialisasi default dari objek mentah.
-- **Node dipilih di atas Go untuk backend ini secara spesifik** karena beban kerjanya I/O-bound (baca/tulis Redis, bukan komputasi berat), dan Vercel punya dukungan Node.js/serverless native — nol konfigurasi runtime tambahan, cold start lebih ringan dibanding menjalankan Go di Vercel Functions.
-- **NIK/BPJS disimpan tapi tidak pernah ditampilkan utuh.** Dikumpulkan opsional saat ambil nomor (`api/tickets.js`), disimpan di Redis, tapi `ticketToJSON` cuma pernah mengembalikan versi tersamar (`•••• 7890`). Nama pasien juga selalu disamarkan di layar publik (`Budi S.`, bukan nama lengkap). Ini pilihan sadar mengingat papan panggil itu tampilan publik.
-- **PIN admin bukan auth sungguhan.** `api/_lib/adminAuth.js` cuma bandingin string di header — cukup buat demo/portofolio, tapi kalau proyek ini mau dipakai produksi dengan data pasien sungguhan, ganti dengan auth session/JWT yang layak.
+* **Goroutines/channels → an atomic Redis `EVAL`.** The old guarantee — "only one counter can ever claim this ticket" — used to come from a Go channel. Now it comes from a Lua script that runs atomically (single-threaded) on the Redis side, so even if two `call-next` requests land at the same time, they still can't grab the same ticket. This is also what makes multi-counter support safe: however many counters call at once for the same department, no ticket ever gets double-claimed. Check `api/_lib/actor.js` if you're curious.
+* **Graceful shutdown → self-heal on read.** Graceful shutdown used to guarantee an in-flight ticket wouldn't get lost if the server shut down. There's no server to shut down anymore, but the risk just changed shape: a counter calls a ticket, then closes the tab before hitting "Done". The fix — any ticket stuck in "called" status for more than 5 minutes automatically gets pushed back to the front of the queue the next time any endpoint gets hit. No cron job, no background process needed.
+* **Custom JSON marshaling → one `ticketToJSON` function.** Same principle, different form: the shape of data going out is always explicit and consistent, never a raw default serialization of whatever object happens to be lying around.
+* **Node over Go for this specific backend** , because the workload is I/O-bound (reading/writing Redis) rather than compute-heavy, and Vercel is natively built for Node.js — zero extra runtime config, and lighter cold starts than running Go on Vercel Functions.
+* **NIK/BPJS is stored but never shown in full.** It's collected optionally when a ticket is issued (`api/tickets.js`), saved in Redis, but `ticketToJSON` only ever returns a masked version (`•••• 7890`). Patient names are masked on public screens too (`Budi S.`, never the full name). Deliberate call, given the display board is a public screen.
+* **The admin PIN is not real auth.** `api/_lib/adminAuth.js` just compares a string sent in a header — fine for a demo/portfolio, but if this ever handles real patient data in production, that's the first thing to replace with proper session/JWT auth.
 
-## Menjalankan lokal
+## Running it locally
 
 ```bash
 npm install
-cp .env.example .env.local   # isi dua nilai dari Upstash (lihat di bawah)
+cp .env.example .env.local   # fill in the 2 Upstash values + an ADMIN_PIN, see below
 npx vercel dev
 ```
 
-## Deploy gratis ke Vercel
+## Deploying for free on Vercel
 
-1. **Buat Redis gratis** di [console.upstash.com](https://console.upstash.com) → *Create Database* (pilih region terdekat) → buka tab **REST API** → salin `UPSTASH_REDIS_REST_URL` dan `UPSTASH_REDIS_REST_TOKEN`.
-2. **Push repo ini ke GitHub**, lalu import di [vercel.com/new](https://vercel.com/new).
-3. Di pengaturan project Vercel → **Environment Variables**, tambahkan dua nilai dari langkah 1, plus `ADMIN_PIN` bebas (PIN buat buka `/admin.html`).
-4. Deploy. Vercel otomatis mendeteksi folder `api/` sebagai serverless functions dan `public/` sebagai situs statis — tidak ada build step yang perlu dikonfigurasi.
-5. Bagikan tiga URL ke pihak yang relevan: `/` (kiosk, bisa jadi tablet di pintu masuk), `/counter.html` (loket), `/display.html` (TV ruang tunggu).
+1. Spin up a free Redis instance at [console.upstash.com](https://console.upstash.com/) → *Create Database* → open the **REST API** tab → copy `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
+2. Push this repo to GitHub, import it at [vercel.com/new](https://vercel.com/new).
+3. In the Vercel project's Environment Variables, add the two values from step 1, plus any `ADMIN_PIN` you like (unlocks `/admin.html`).
+4. Deploy. Vercel auto-detects the `api/` folder as serverless functions and `public/` as the static site — no build step to configure.
+5. Done — share the URLs: `/` (kiosk, could live on a tablet at the entrance), `/counter.html` (staff counter), `/display.html` (waiting-room TV).
 
-Semua berjalan di Hobby plan Vercel (gratis) + Upstash free tier (gratis untuk trafik skala kecil-menengah) — tidak ada kartu kredit yang perlu terpasang.
+Everything runs on Vercel's Hobby plan (free) + Upstash's free tier (free for small-to-medium traffic) — no credit card required.
 
-## Struktur proyek
+## Project structure
 
 ```
 api/
-  _lib/redis.js        klien Redis (Upstash REST, aman untuk serverless)
-  _lib/ticket.js         konfigurasi poli, jadwal dokter, serialisasi & masking tiket
-  _lib/actor.js           klaim atomik, posisi antrian, multi-loket, self-heal
-  _lib/stats.js            statistik harian + rata-rata waktu layanan (EMA)
-  _lib/adminAuth.js        gerbang PIN buat endpoint admin
-  departments.js          GET  daftar poli + status buka/tutup + kedalaman antrian
-  tickets.js                POST ambil nomor antrian baru (nama wajib, NIK opsional)
-  tickets/[id].js            GET  status tiket + posisi + estimasi waktu tunggu
-  call-next.js               POST panggil pasien berikutnya (per loket)
-  complete.js                 POST tandai tiket selesai + update statistik
-  queue-status.js              GET  status live untuk papan panggil (multi-loket)
-  admin/summary.js              GET  rekap harian, perlu header x-admin-pin
+  _lib/redis.js        Redis client (Upstash REST, safe for serverless)
+  _lib/ticket.js         department config, doctor schedules, ticket serialization + masking
+  _lib/actor.js           atomic claim, queue position, multi-counter, self-heal
+  _lib/stats.js            daily stats + rolling average service time (EMA)
+  _lib/adminAuth.js        PIN gate for the admin endpoint
+  departments.js          GET  department list + open/closed status + queue depth
+  tickets.js                POST issue a new ticket (name required, NIK optional)
+  tickets/[id].js            GET  ticket status + queue position + wait estimate
+  call-next.js               POST call the next patient (per counter)
+  complete.js                 POST mark a ticket done + update stats
+  queue-status.js              GET  live status for the display board (multi-counter)
+  admin/summary.js              GET  daily recap, needs an x-admin-pin header
 public/
-  index.html / js/app.js         kiosk pasien (identitas → poli → tiket + QR)
-  counter.html / js/counter.js   loket petugas + loket lain yang aktif
-  display.html / js/display.js   papan panggil, multi-loket, panggilan suara
-  status.html / js/status.js     status tiket pribadi (tujuan QR code)
-  admin.html / js/admin.js       rekap harian, dikunci PIN
-  css/style.css                  token desain + komponen tiket sobek
+  index.html / js/app.js         patient kiosk (identity → department → ticket + QR)
+  counter.html / js/counter.js   staff counter + other active counters
+  display.html / js/display.js   display board, multi-counter, voice announcements
+  status.html / js/status.js     personal ticket status page (QR destination)
+  admin.html / js/admin.js       daily recap, PIN-locked
+  css/style.css                  design tokens + ticket-stub component
 ```
