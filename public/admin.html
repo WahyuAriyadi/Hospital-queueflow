@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QueueFlow — Rekap Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: '#0b1220', panel: '#121a2b', raised: '#182238', line: '#223049',
+            ink: '#e8ecf3', muted: '#7c8aa5', teal: '#2dd4bf', amber: '#f5a623',
+          },
+          fontFamily: {
+            sans: ['IBM Plex Sans', 'sans-serif'],
+            mono: ['IBM Plex Mono', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body class="bg-bg text-ink font-sans">
+  <div class="scanline"></div>
+  <div id="app" class="min-h-screen flex flex-col" v-cloak>
+
+    <header class="border-b border-line px-6 py-4 flex items-baseline justify-between">
+      <h1 class="font-mono text-lg tracking-tight">QueueFlow<span class="text-teal">_</span> <span class="text-muted text-base">rekap admin</span></h1>
+      <a href="/" class="text-muted text-sm hover:text-teal font-mono">← kiosk</a>
+    </header>
+
+    <main class="flex-1 px-6 py-10 max-w-3xl mx-auto w-full">
+
+      <div v-if="!authed" class="max-w-xs mx-auto">
+        <label class="block text-muted text-sm mb-1">PIN admin</label>
+        <input v-model="pin" type="password" class="btn w-full mb-4" @keyup.enter="login" />
+        <button class="btn btn--primary w-full" @click="login" :disabled="!pin || loading">Masuk</button>
+        <p v-if="error" class="text-red-400 text-sm mt-3">{{ error }}</p>
+      </div>
+
+      <div v-else>
+        <div class="flex items-center justify-between mb-6">
+          <p class="text-muted text-sm">Rekap hari ini · {{ data?.departments?.[0]?.date }}</p>
+          <button class="text-muted text-sm hover:text-teal" @click="load">↻ refresh</button>
+        </div>
+
+        <table class="w-full text-sm font-mono border-collapse">
+          <thead>
+            <tr class="text-muted text-left border-b border-line">
+              <th class="py-2">Poli</th>
+              <th class="py-2 text-right">Terbit</th>
+              <th class="py-2 text-right">Selesai</th>
+              <th class="py-2 text-right">Menunggu</th>
+              <th class="py-2 text-right">Rata² layanan</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="d in data?.departments" :key="d.code" class="border-b border-line">
+              <td class="py-2">{{ d.name }}</td>
+              <td class="py-2 text-right">{{ d.issued }}</td>
+              <td class="py-2 text-right">{{ d.completed }}</td>
+              <td class="py-2 text-right text-teal">{{ d.currentlyWaiting }}</td>
+              <td class="py-2 text-right">{{ d.avgServiceMinutes }} mnt</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/vue@3.4.31/dist/vue.global.prod.js"></script>
+  <script src="/js/admin.js"></script>
+</body>
+</html>

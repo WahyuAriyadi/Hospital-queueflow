@@ -34,14 +34,37 @@
         <h1 class="font-mono text-lg tracking-tight">QueueFlow<span class="text-teal">_</span></h1>
         <p class="text-muted text-sm">Loket Ambil Nomor Antrian</p>
       </div>
-      <a href="/display.html" class="text-muted text-sm hover:text-teal font-mono">papan panggil →</a>
+      <nav class="flex gap-4 text-sm font-mono">
+        <span class="text-teal">kiosk</span>
+        <a href="/counter.html" class="text-muted hover:text-teal">loket petugas</a>
+        <a href="/display.html" class="text-muted hover:text-teal">papan panggil</a>
+      </nav>
     </header>
 
     <main class="flex-1 px-6 py-10 max-w-2xl mx-auto w-full" v-cloak>
 
+      <!-- Step 0: data pasien -->
+      <section v-if="step === 'identity'">
+        <h2 class="text-xl font-medium mb-1">Data pasien</h2>
+        <p class="text-muted text-sm mb-6">NIK/BPJS opsional, tapi mempercepat pencarian data di loket.</p>
+
+        <label class="block text-muted text-sm mb-1">Nama lengkap *</label>
+        <input v-model="patientName" placeholder="Nama sesuai KTP" class="btn w-full mb-4" />
+
+        <label class="block text-muted text-sm mb-1">NIK / No. BPJS (opsional)</label>
+        <input v-model="patientId" placeholder="16 digit NIK atau nomor BPJS" class="btn w-full mb-6" />
+
+        <button class="btn btn--primary w-full" :disabled="!patientName.trim()" @click="step = 'department'">
+          Lanjut pilih poli
+        </button>
+      </section>
+
       <!-- Step 1: pilih poli -->
-      <section v-if="!ticket">
-        <h2 class="text-xl font-medium mb-1">Pilih poli tujuan</h2>
+      <section v-else-if="step === 'department'">
+        <div class="flex items-center justify-between mb-1">
+          <h2 class="text-xl font-medium">Pilih poli tujuan</h2>
+          <button class="text-muted text-sm hover:text-ink" @click="step = 'identity'">← ubah data</button>
+        </div>
         <p class="text-muted text-sm mb-6">Nomor antrian akan dicetak setelah Anda memilih.</p>
 
         <div v-if="loading" class="text-muted font-mono text-sm">Memuat daftar poli…</div>
@@ -49,15 +72,17 @@
           <button
             v-for="d in departments" :key="d.code"
             class="btn flex flex-col gap-1"
-            @click="ambilTiket(d.code)"
-            :disabled="submitting"
+            :class="{ 'opacity-40 cursor-not-allowed': !d.open }"
+            @click="d.open && ambilTiket(d.code)"
+            :disabled="submitting || !d.open"
           >
             <span class="flex items-center justify-between">
               <span class="font-medium">{{ d.name }}</span>
               <span v-if="d.priority" class="badge badge--priority">Prioritas</span>
+              <span v-else-if="!d.open" class="badge" style="border-color:var(--muted);color:var(--muted)">Tutup</span>
             </span>
             <span class="text-muted text-sm font-mono">
-              {{ d.waiting + d.priorityWaiting }} orang menunggu
+              {{ d.open ? (d.waiting + d.priorityWaiting) + ' orang menunggu' : d.scheduleText }}
             </span>
           </button>
         </div>
@@ -75,14 +100,15 @@
           <div class="px-6 py-8">
             <p class="text-muted text-sm mb-1">{{ ticket.departmentName }}</p>
             <p class="font-mono text-5xl font-semibold tracking-wide text-teal">{{ ticket.number }}</p>
+            <p class="text-muted text-sm mt-2">{{ ticket.patientName }}</p>
             <span class="badge mt-3" :class="ticket.priority ? 'badge--priority' : 'badge--normal'">
               {{ ticket.priority ? 'Jalur Prioritas' : 'Jalur Reguler' }}
             </span>
           </div>
           <div class="perforation perforation--panel"></div>
-          <div class="px-6 py-4 text-left">
-            <p class="text-muted text-xs font-mono">Diterbitkan {{ waktu(ticket.issuedAt) }}</p>
-            <p class="text-muted text-xs mt-2">Pantau giliran Anda di papan panggil, atau simpan tautan ini.</p>
+          <div class="px-6 py-5 flex flex-col items-center gap-3">
+            <canvas ref="qr" class="bg-white p-2 rounded"></canvas>
+            <p class="text-muted text-xs text-center">Scan buat pantau antrian dari HP kamu sendiri</p>
           </div>
         </div>
 
@@ -97,6 +123,7 @@
   </div>
 
   <script src="https://unpkg.com/vue@3.4.31/dist/vue.global.prod.js"></script>
+  <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script src="/js/app.js"></script>
 </body>
 </html>

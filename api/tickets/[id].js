@@ -1,5 +1,7 @@
 import { redis } from '../_lib/redis.js';
 import { parseTicket, ticketToJSON } from '../_lib/ticket.js';
+import { getQueuePosition } from '../_lib/actor.js';
+import { getAvgServiceSeconds } from '../_lib/stats.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -14,5 +16,21 @@ export default async function handler(req, res) {
     return;
   }
 
-  res.status(200).json(ticketToJSON(ticket));
+  const base = ticketToJSON(ticket);
+
+  if (ticket.status !== 'waiting') {
+    res.status(200).json({ ...base, position: null, estimatedWaitMinutes: null });
+    return;
+  }
+
+  const [position, avgServiceSeconds] = await Promise.all([
+    getQueuePosition(ticket.deptCode, ticket.id),
+    getAvgServiceSeconds(ticket.deptCode),
+  ]);
+
+  res.status(200).json({
+    ...base,
+    position, // 0 = giliran berikutnya
+    estimatedWaitMinutes: position === null ? null : Math.round(((position * avgServiceSeconds) / 60) * 10) / 10,
+  });
 }

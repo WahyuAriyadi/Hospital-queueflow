@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QueueFlow — Status Antrian</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: '#0b1220', panel: '#121a2b', raised: '#182238', line: '#223049',
+            ink: '#e8ecf3', muted: '#7c8aa5', teal: '#2dd4bf', amber: '#f5a623',
+          },
+          fontFamily: {
+            sans: ['IBM Plex Sans', 'sans-serif'],
+            mono: ['IBM Plex Mono', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body class="bg-bg text-ink font-sans">
+  <div class="scanline"></div>
+  <div id="app" class="min-h-screen flex flex-col" v-cloak>
+
+    <header class="border-b border-line px-6 py-4">
+      <h1 class="font-mono text-lg tracking-tight">QueueFlow<span class="text-teal">_</span> <span class="text-muted text-base">status antrian</span></h1>
+    </header>
+
+    <main class="flex-1 px-6 py-10 max-w-md mx-auto w-full flex flex-col items-center text-center">
+
+      <div v-if="notFound" class="text-muted">
+        <p>Tiket tidak ditemukan. Tautan mungkin sudah kedaluwarsa.</p>
+        <a href="/" class="text-teal text-sm">← ambil nomor baru</a>
+      </div>
+
+      <div v-else-if="ticket" class="ticket w-full">
+        <div class="ticket__notch ticket__notch--left"></div>
+        <div class="ticket__notch ticket__notch--right"></div>
+        <div class="px-6 py-8">
+          <p class="text-muted text-sm mb-1">{{ ticket.departmentName }}</p>
+          <p class="font-mono text-5xl font-semibold tracking-wide text-teal">{{ ticket.number }}</p>
+          <p class="text-muted text-sm mt-2">{{ ticket.patientName }}</p>
+        </div>
+        <div class="perforation perforation--panel"></div>
+        <div class="px-6 py-6">
+          <template v-if="ticket.status === 'waiting'">
+            <p class="text-3xl font-mono font-semibold">{{ ticket.position }}</p>
+            <p class="text-muted text-sm">orang di depan Anda</p>
+            <p class="text-teal text-sm mt-3" v-if="ticket.estimatedWaitMinutes !== null">
+              Estimasi ± {{ ticket.estimatedWaitMinutes }} menit
+            </p>
+          </template>
+          <template v-else-if="ticket.status === 'called'">
+            <p class="text-2xl font-medium text-amber">Dipanggil sekarang!</p>
+            <p class="text-muted text-sm mt-1">Silakan menuju loket {{ ticket.counter }}</p>
+          </template>
+          <template v-else>
+            <p class="text-muted">Layanan sudah selesai.</p>
+          </template>
+        </div>
+      </div>
+
+      <p class="text-muted text-xs font-mono mt-6">Halaman ini refresh otomatis tiap beberapa detik</p>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/vue@3.4.31/dist/vue.global.prod.js"></script>
+  <script src="/js/status.js"></script>
+</body>
+</html>

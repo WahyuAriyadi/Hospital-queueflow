@@ -1,8 +1,11 @@
-const { createApp } = Vue;
+const { createApp, nextTick } = Vue;
 
 createApp({
   data() {
     return {
+      step: 'identity', // identity | department | ticket
+      patientName: '',
+      patientId: '',
       departments: [],
       loading: true,
       submitting: false,
@@ -33,25 +36,37 @@ createApp({
         const res = await fetch('/api/tickets', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ department: code }),
+          body: JSON.stringify({
+            department: code,
+            patientName: this.patientName,
+            patientId: this.patientId || null,
+          }),
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.error || 'Gagal mengambil nomor antrian');
         }
         this.ticket = await res.json();
+        this.step = 'ticket';
+        await nextTick();
+        this.renderQR();
       } catch (e) {
         this.error = e.message;
       } finally {
         this.submitting = false;
       }
     },
+    renderQR() {
+      if (!this.$refs.qr || !window.QRCode) return;
+      const url = `${window.location.origin}/status.html?id=${this.ticket.id}`;
+      QRCode.toCanvas(this.$refs.qr, url, { width: 140, margin: 1 }, () => {});
+    },
     reset() {
       this.ticket = null;
+      this.patientName = '';
+      this.patientId = '';
+      this.step = 'identity';
       this.loadDepartments();
-    },
-    waktu(ms) {
-      return new Date(ms).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
     },
   },
 }).mount('#app');

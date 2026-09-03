@@ -31,7 +31,11 @@
 
     <header class="border-b border-line px-6 py-4 flex items-baseline justify-between">
       <h1 class="font-mono text-lg tracking-tight">QueueFlow<span class="text-teal">_</span> <span class="text-muted text-base">loket petugas</span></h1>
-      <a href="/display.html" class="text-muted text-sm hover:text-teal font-mono">papan panggil →</a>
+      <nav class="flex gap-4 text-sm font-mono">
+        <a href="/" class="text-muted hover:text-teal">kiosk</a>
+        <span class="text-teal">loket petugas</span>
+        <a href="/display.html" class="text-muted hover:text-teal">papan panggil</a>
+      </nav>
     </header>
 
     <main class="flex-1 px-6 py-8 max-w-xl mx-auto w-full">
@@ -78,6 +82,15 @@
         </div>
 
         <p v-if="notice" class="text-muted text-sm mt-4 font-mono">{{ notice }}</p>
+
+        <div v-if="otherCounters.length" class="mt-6 text-left">
+          <p class="text-muted text-xs uppercase tracking-wide mb-2">Loket lain aktif di poli ini</p>
+          <ul class="text-sm font-mono space-y-1">
+            <li v-for="s in otherCounters" :key="s.counter" class="text-muted">
+              Loket {{ s.counter }} — {{ s.ticket.number }}
+            </li>
+          </ul>
+        </div>
 
         <button class="text-muted text-sm mt-8 hover:text-ink" @click="setup = false">← ganti loket / poli</button>
       </div>

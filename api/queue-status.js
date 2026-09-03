@@ -1,6 +1,6 @@
 import { redis } from './_lib/redis.js';
-import { DEPARTMENTS, parseTicket } from './_lib/ticket.js';
-import { reapStale } from './_lib/actor.js';
+import { DEPARTMENTS } from './_lib/ticket.js';
+import { reapStaleAll, getServingByCounter } from './_lib/actor.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -13,18 +13,18 @@ export default async function handler(req, res) {
 
   const data = await Promise.all(
     depts.map(async (d) => {
-      await reapStale(d.code);
-      const [waiting, priorityWaiting, servingRaw] = await Promise.all([
+      await reapStaleAll(d.code);
+      const [waiting, priorityWaiting, serving] = await Promise.all([
         redis.llen(`queue:${d.code}:normal`),
         redis.llen(`queue:${d.code}:priority`),
-        redis.get(`serving:${d.code}`),
+        getServingByCounter(d.code),
       ]);
       return {
         code: d.code,
         name: d.name,
         waiting,
         priorityWaiting,
-        nowServing: parseTicket(servingRaw),
+        serving, // [{ counter, ticket }] — bisa lebih dari satu loket aktif
       };
     })
   );

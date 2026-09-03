@@ -31,7 +31,17 @@
 
     <header class="border-b border-line px-8 py-5 flex items-baseline justify-between">
       <h1 class="font-mono text-xl tracking-tight">QueueFlow<span class="text-teal">_</span> <span class="text-muted text-base">papan panggil</span></h1>
-      <p class="font-mono text-muted text-sm">{{ jamSekarang }}</p>
+      <div class="flex items-center gap-5">
+        <nav class="flex gap-4 text-sm font-mono">
+          <a href="/" class="text-muted hover:text-teal">kiosk</a>
+          <a href="/counter.html" class="text-muted hover:text-teal">loket petugas</a>
+          <span class="text-teal">papan panggil</span>
+        </nav>
+        <button class="btn text-sm" @click="toggleVoice">
+          {{ voiceOn ? '🔊 Suara aktif' : '🔈 Aktifkan suara' }}
+        </button>
+        <p class="font-mono text-muted text-sm">{{ jamSekarang }}</p>
+      </div>
     </header>
 
     <main class="flex-1 p-8 grid gap-6" :class="gridCols">
@@ -41,18 +51,22 @@
           <span v-if="d.priorityWaiting > 0" class="badge badge--priority">{{ d.priorityWaiting }} darurat</span>
         </div>
 
-        <div class="flex-1 flex items-center justify-center py-6">
-          <p v-if="d.nowServing" class="font-mono font-bold text-teal leading-none"
-             :class="d.nowServing.status === 'called' ? 'text-6xl animate-pulse' : 'text-6xl'">
-            {{ d.nowServing.number }}
-          </p>
+        <div class="flex-1 flex flex-col items-center justify-center py-6 gap-2">
+          <template v-if="d.serving.length">
+            <div v-for="s in d.serving" :key="s.counter" class="text-center">
+              <p class="font-mono font-bold text-teal leading-none text-4xl"
+                 :class="{ 'animate-pulse': s.ticket.status === 'called' }">
+                {{ s.ticket.number }}
+              </p>
+              <p class="text-muted text-xs font-mono mt-1">loket {{ s.counter }}</p>
+            </div>
+          </template>
           <p v-else class="font-mono text-3xl text-muted">—</p>
         </div>
 
         <div class="perforation perforation--panel"></div>
-        <div class="px-6 py-3 flex justify-between text-muted text-sm font-mono">
-          <span>{{ d.waiting + d.priorityWaiting }} menunggu</span>
-          <span v-if="d.nowServing?.counter">loket {{ d.nowServing.counter }}</span>
+        <div class="px-6 py-3 text-muted text-sm font-mono text-center">
+          {{ d.waiting + d.priorityWaiting }} menunggu
         </div>
       </div>
     </main>
